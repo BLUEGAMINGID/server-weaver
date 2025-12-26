@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from 'axios';
+import { supabase } from '@/integrations/supabase/client';
 
 // Pterodactyl API Types
 export interface ServerStatus {
@@ -45,53 +45,18 @@ export interface ConsoleMessage {
   type: 'info' | 'warning' | 'error' | 'command';
 }
 
-// Mock data generators for demo purposes
-const generateMockPlayers = (): Player[] => [
-  { id: '1', name: 'Steve_Builder', uuid: 'a1b2c3d4', online: true },
-  { id: '2', name: 'Alex_Miner', uuid: 'e5f6g7h8', online: true },
-  { id: '3', name: 'CreeperKing99', uuid: 'i9j0k1l2', online: false, lastSeen: '2 hours ago' },
-  { id: '4', name: 'DiamondHunter', uuid: 'm3n4o5p6', online: false, lastSeen: '1 day ago', banned: true },
-  { id: '5', name: 'EnderDragon_X', uuid: 'q7r8s9t0', online: true },
-  { id: '6', name: 'RedstoneWizard', uuid: 'u1v2w3x4', online: false, lastSeen: '5 minutes ago' },
-];
-
-const generateMockAddons = (): AddonPack[] => [
-  { id: '1', name: 'Better Swords', type: 'behavior', version: '1.2.0', uuid: 'addon-1', description: 'Adds new sword types', enabled: true, priority: 1 },
-  { id: '2', name: 'HD Textures', type: 'resource', version: '2.0.1', uuid: 'addon-2', description: 'High definition textures', enabled: true, priority: 2 },
-  { id: '3', name: 'Custom Mobs', type: 'behavior', version: '1.0.5', uuid: 'addon-3', description: 'New mob variants', enabled: true, priority: 3 },
-  { id: '4', name: 'Shader Pack', type: 'resource', version: '3.1.0', uuid: 'addon-4', description: 'Realistic lighting', enabled: false, priority: 4 },
-  { id: '5', name: 'Advanced Crafting', type: 'behavior', version: '1.1.2', uuid: 'addon-5', description: 'New crafting recipes', enabled: true, priority: 5 },
-];
-
-const generateMockProperties = (): ServerProperty[] => [
-  { key: 'server-name', value: 'My Awesome Server', type: 'string', description: 'Name of the server' },
-  { key: 'gamemode', value: 'survival', type: 'string', description: 'Default game mode' },
-  { key: 'difficulty', value: 'normal', type: 'string', description: 'Game difficulty' },
-  { key: 'max-players', value: 20, type: 'number', description: 'Maximum players allowed' },
-  { key: 'pvp', value: true, type: 'boolean', description: 'Enable player vs player' },
-  { key: 'white-list', value: false, type: 'boolean', description: 'Enable whitelist' },
-  { key: 'spawn-protection', value: 16, type: 'number', description: 'Spawn protection radius' },
-  { key: 'view-distance', value: 10, type: 'number', description: 'Render distance' },
-  { key: 'allow-cheats', value: false, type: 'boolean', description: 'Allow cheat commands' },
-  { key: 'motd', value: 'Welcome to the server!', type: 'string', description: 'Message of the day' },
-  { key: 'online-mode', value: true, type: 'boolean', description: 'Verify player accounts' },
-  { key: 'allow-flight', value: false, type: 'boolean', description: 'Allow flying' },
-];
-
-const mockConsoleMessages: ConsoleMessage[] = [
-  { id: '1', timestamp: new Date(Date.now() - 300000), message: '[Server] Starting Minecraft Bedrock Server...', type: 'info' },
-  { id: '2', timestamp: new Date(Date.now() - 280000), message: '[Server] Loading world "Survival World"...', type: 'info' },
-  { id: '3', timestamp: new Date(Date.now() - 260000), message: '[Server] World loaded successfully', type: 'info' },
-  { id: '4', timestamp: new Date(Date.now() - 200000), message: '[INFO] Steve_Builder joined the game', type: 'info' },
-  { id: '5', timestamp: new Date(Date.now() - 150000), message: '[INFO] Alex_Miner joined the game', type: 'info' },
-  { id: '6', timestamp: new Date(Date.now() - 100000), message: '[WARN] Entity count approaching limit', type: 'warning' },
-  { id: '7', timestamp: new Date(Date.now() - 50000), message: '[INFO] EnderDragon_X joined the game', type: 'info' },
-  { id: '8', timestamp: new Date(Date.now() - 30000), message: '[CMD] /time set day', type: 'command' },
-];
+export interface PlayersData {
+  ops: Array<{ uuid: string; name: string; level: number }>;
+  whitelist: Array<{ uuid: string; name: string }>;
+  banned: Array<{ uuid: string; name: string; reason: string }>;
+  bannedIps: Array<{ ip: string; reason: string }>;
+}
 
 class PterodactylAPI {
-  private client: AxiosInstance | null = null;
   private serverUUID: string | null = null;
+  private consoleSocket: WebSocket | null = null;
+  private consoleMessages: ConsoleMessage[] = [];
+  private messageListeners: Set<(messages: ConsoleMessage[]) => void> = new Set();
 
   constructor() {
     this.serverUUID = sessionStorage.getItem('server_uuid');
@@ -100,7 +65,6 @@ class PterodactylAPI {
   setServerUUID(uuid: string) {
     this.serverUUID = uuid;
     sessionStorage.setItem('server_uuid', uuid);
-    this.initClient();
   }
 
   getServerUUID(): string | null {
@@ -110,92 +74,262 @@ class PterodactylAPI {
   clearSession() {
     this.serverUUID = null;
     sessionStorage.removeItem('server_uuid');
-    this.client = null;
+    this.disconnectConsole();
   }
 
-  private initClient() {
-    // In production, this would connect to actual Pterodactyl API
-    this.client = axios.create({
-      baseURL: '/api/pterodactyl',
+  private async callProxy(action: string, body?: object, queryParams?: Record<string, string>): Promise<any> {
+    if (!this.serverUUID) {
+      throw new Error('Server UUID not set');
+    }
+
+    const params = new URLSearchParams({ action, ...queryParams });
+    
+    const { data, error } = await supabase.functions.invoke('pterodactyl-proxy', {
+      body: body || {},
       headers: {
-        'Authorization': `Bearer ${this.serverUUID}`,
-        'Content-Type': 'application/json',
+        'x-server-uuid': this.serverUUID,
       },
     });
+
+    // Since we can't pass query params directly, we'll modify the approach
+    // Actually, supabase.functions.invoke doesn't support query params well
+    // Let's use fetch directly for more control
+    
+    const projectUrl = import.meta.env.VITE_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+    const response = await fetch(`${projectUrl}/functions/v1/pterodactyl-proxy?${params.toString()}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${anonKey}`,
+        'Content-Type': 'application/json',
+        'x-server-uuid': this.serverUUID,
+      },
+      body: JSON.stringify(body || {}),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `API error: ${response.status}`);
+    }
+
+    return response.json();
   }
 
   // Server Status
   async getServerStatus(): Promise<ServerStatus> {
-    // Mock implementation
+    const data = await this.callProxy('status');
     return {
-      id: this.serverUUID || 'mock-server',
-      name: 'Survival World',
-      status: 'running',
-      memory: { current: 2048, limit: 4096 },
-      cpu: 45,
-      disk: { current: 5120, limit: 20480 },
+      id: data.id,
+      name: data.name,
+      status: data.status as 'running' | 'offline' | 'starting' | 'stopping',
+      memory: data.memory,
+      cpu: data.cpu,
+      disk: data.disk,
     };
   }
 
-  // Players
-  async getPlayers(): Promise<Player[]> {
-    return generateMockPlayers();
+  // Console WebSocket connection
+  async connectConsole(onMessage: (message: ConsoleMessage) => void): Promise<void> {
+    try {
+      const credentials = await this.callProxy('console');
+      
+      if (!credentials.socket) {
+        console.log('WebSocket not available, using polling mode');
+        return;
+      }
+
+      this.consoleSocket = new WebSocket(credentials.socket);
+      
+      this.consoleSocket.onopen = () => {
+        console.log('Console WebSocket connected');
+        // Authenticate
+        this.consoleSocket?.send(JSON.stringify({
+          event: 'auth',
+          args: [credentials.token],
+        }));
+      };
+
+      this.consoleSocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.event === 'console output') {
+            const message: ConsoleMessage = {
+              id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+              timestamp: new Date(),
+              message: data.args[0],
+              type: this.detectMessageType(data.args[0]),
+            };
+            
+            this.consoleMessages.push(message);
+            if (this.consoleMessages.length > 500) {
+              this.consoleMessages = this.consoleMessages.slice(-500);
+            }
+            
+            onMessage(message);
+          }
+        } catch (e) {
+          console.error('Error parsing console message:', e);
+        }
+      };
+
+      this.consoleSocket.onerror = (error) => {
+        console.error('Console WebSocket error:', error);
+      };
+
+      this.consoleSocket.onclose = () => {
+        console.log('Console WebSocket disconnected');
+      };
+    } catch (error) {
+      console.error('Failed to connect console:', error);
+    }
   }
 
-  async kickPlayer(playerId: string): Promise<void> {
-    console.log(`Kicking player: ${playerId}`);
+  private detectMessageType(message: string): 'info' | 'warning' | 'error' | 'command' {
+    const lowerMessage = message.toLowerCase();
+    if (lowerMessage.includes('[error]') || lowerMessage.includes('error:') || lowerMessage.includes('exception')) {
+      return 'error';
+    }
+    if (lowerMessage.includes('[warn]') || lowerMessage.includes('warning:')) {
+      return 'warning';
+    }
+    if (lowerMessage.startsWith('/') || lowerMessage.includes('[cmd]')) {
+      return 'command';
+    }
+    return 'info';
   }
 
-  async banPlayer(playerId: string): Promise<void> {
-    console.log(`Banning player: ${playerId}`);
+  disconnectConsole() {
+    if (this.consoleSocket) {
+      this.consoleSocket.close();
+      this.consoleSocket = null;
+    }
   }
 
-  async ipBanPlayer(playerId: string): Promise<void> {
-    console.log(`IP Banning player: ${playerId}`);
-  }
-
-  async unbanPlayer(playerId: string): Promise<void> {
-    console.log(`Unbanning player: ${playerId}`);
-  }
-
-  // Addons
-  async getAddons(): Promise<AddonPack[]> {
-    return generateMockAddons();
-  }
-
-  async toggleAddon(addonId: string, enabled: boolean): Promise<void> {
-    console.log(`Toggling addon ${addonId}: ${enabled}`);
-  }
-
-  async updateAddonPriority(addonId: string, newPriority: number): Promise<void> {
-    console.log(`Updating addon ${addonId} priority to: ${newPriority}`);
-  }
-
-  async removeAddon(addonId: string): Promise<void> {
-    console.log(`Removing addon: ${addonId}`);
-  }
-
-  // Server Properties
-  async getServerProperties(): Promise<ServerProperty[]> {
-    return generateMockProperties();
-  }
-
-  async updateServerProperty(key: string, value: string | number | boolean): Promise<void> {
-    console.log(`Updating property ${key}: ${value}`);
-  }
-
-  // Console
   async getConsoleMessages(): Promise<ConsoleMessage[]> {
-    return mockConsoleMessages;
+    return this.consoleMessages;
   }
 
+  // Commands
   async sendCommand(command: string): Promise<void> {
-    console.log(`Sending command: ${command}`);
+    await this.callProxy('command', { command });
+    
+    // Add command to local messages
+    const message: ConsoleMessage = {
+      id: Date.now().toString(),
+      timestamp: new Date(),
+      message: `> ${command}`,
+      type: 'command',
+    };
+    this.consoleMessages.push(message);
   }
 
   // Power actions
   async powerAction(action: 'start' | 'stop' | 'restart' | 'kill'): Promise<void> {
-    console.log(`Power action: ${action}`);
+    await this.callProxy('power', { signal: action });
+  }
+
+  // Players
+  async getPlayers(): Promise<Player[]> {
+    const data: PlayersData = await this.callProxy('players');
+    
+    const players: Player[] = [];
+    
+    // Combine whitelist and banned players into a single list
+    const allPlayers = new Map<string, Player>();
+    
+    // Add whitelisted players
+    for (const p of data.whitelist || []) {
+      allPlayers.set(p.uuid, {
+        id: p.uuid,
+        name: p.name,
+        uuid: p.uuid,
+        online: false, // We can't know online status from files
+        banned: false,
+        ipBanned: false,
+      });
+    }
+    
+    // Mark banned players
+    for (const p of data.banned || []) {
+      if (allPlayers.has(p.uuid)) {
+        const existing = allPlayers.get(p.uuid)!;
+        existing.banned = true;
+      } else {
+        allPlayers.set(p.uuid, {
+          id: p.uuid,
+          name: p.name,
+          uuid: p.uuid,
+          online: false,
+          banned: true,
+          ipBanned: false,
+        });
+      }
+    }
+
+    return Array.from(allPlayers.values());
+  }
+
+  async kickPlayer(playerName: string): Promise<void> {
+    await this.sendCommand(`kick ${playerName}`);
+  }
+
+  async banPlayer(playerName: string): Promise<void> {
+    await this.sendCommand(`ban ${playerName}`);
+  }
+
+  async ipBanPlayer(playerName: string): Promise<void> {
+    await this.sendCommand(`ban-ip ${playerName}`);
+  }
+
+  async unbanPlayer(playerName: string): Promise<void> {
+    await this.sendCommand(`pardon ${playerName}`);
+  }
+
+  // Server Properties
+  async getServerProperties(): Promise<ServerProperty[]> {
+    return await this.callProxy('properties');
+  }
+
+  async updateServerProperty(key: string, value: string | number | boolean): Promise<void> {
+    await this.callProxy('update-property', { key, value: String(value) });
+  }
+
+  // Addons
+  async getAddons(): Promise<AddonPack[]> {
+    const data = await this.callProxy('addons');
+    return [...(data.behaviorPacks || []), ...(data.resourcePacks || [])];
+  }
+
+  async toggleAddon(addonId: string, enabled: boolean): Promise<void> {
+    // This would require modifying world_behavior_packs.json or world_resource_packs.json
+    console.log(`Toggling addon ${addonId}: ${enabled}`);
+    // Implementation depends on specific pack structure
+  }
+
+  async updateAddonPriority(addonId: string, newPriority: number): Promise<void> {
+    console.log(`Updating addon ${addonId} priority to: ${newPriority}`);
+    // Implementation depends on specific pack structure
+  }
+
+  async removeAddon(addonId: string): Promise<void> {
+    console.log(`Removing addon: ${addonId}`);
+    // Implementation would delete the pack folder
+  }
+
+  // File operations
+  async getFiles(directory: string = '/'): Promise<any[]> {
+    return await this.callProxy('files', {}, { directory });
+  }
+
+  async getFileContent(filePath: string): Promise<string> {
+    const data = await this.callProxy('file-content', {}, { file: filePath });
+    return data.content;
+  }
+
+  async writeFile(filePath: string, content: string): Promise<void> {
+    await this.callProxy('file-write', { file: filePath, content });
   }
 }
 
