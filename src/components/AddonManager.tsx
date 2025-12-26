@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
-import { Boxes, Plus, Upload } from 'lucide-react';
+import { Boxes, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AddonCard from '@/components/AddonCard';
@@ -85,10 +85,10 @@ const AddonManager = ({ addons, onToggle, onUpdatePriority, onRemove }: AddonMan
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center py-8"
+            className="text-center py-6 md:py-8"
           >
-            <Boxes className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
-            <p className="text-muted-foreground text-sm">No {type} packs installed</p>
+            <Boxes className="w-10 h-10 md:w-12 md:h-12 mx-auto text-muted-foreground/30 mb-3" />
+            <p className="text-muted-foreground text-xs md:text-sm">No {type} packs installed</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -99,48 +99,48 @@ const AddonManager = ({ addons, onToggle, onUpdatePriority, onRemove }: AddonMan
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-card p-6"
+      className="glass-card p-4 md:p-6"
     >
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Boxes className="w-5 h-5 text-primary" />
+      <div className="flex items-center justify-between mb-4 md:mb-6">
+        <div className="flex items-center gap-2 md:gap-3">
+          <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Boxes className="w-4 h-4 md:w-5 md:h-5 text-primary" />
           </div>
           <div>
-            <h2 className="font-semibold">Addon Manager</h2>
-            <p className="text-xs text-muted-foreground">
+            <h2 className="font-semibold text-sm md:text-base">Addon Manager</h2>
+            <p className="text-[10px] md:text-xs text-muted-foreground">
               {localAddons.filter(a => a.enabled).length} active packs
             </p>
           </div>
         </div>
-        <Button className="btn-glass h-9 gap-2">
-          <Upload className="w-4 h-4" />
-          <span className="hidden sm:inline">Add Pack</span>
+        <Button className="btn-glass h-8 md:h-9 gap-1.5 md:gap-2 text-xs md:text-sm px-2.5 md:px-3">
+          <Upload className="w-3.5 h-3.5 md:w-4 md:h-4" />
+          <span className="hidden xs:inline">Add</span>
         </Button>
       </div>
 
       <Tabs defaultValue="behavior" className="w-full">
-        <TabsList className="w-full bg-secondary/50 p-1 mb-4">
-          <TabsTrigger value="behavior" className="flex-1 data-[state=active]:bg-background">
+        <TabsList className="w-full bg-secondary/50 p-1 mb-3 md:mb-4 h-9 md:h-10">
+          <TabsTrigger value="behavior" className="flex-1 text-xs md:text-sm data-[state=active]:bg-background">
             Behavior ({behaviorPacks.length})
           </TabsTrigger>
-          <TabsTrigger value="resource" className="flex-1 data-[state=active]:bg-background">
+          <TabsTrigger value="resource" className="flex-1 text-xs md:text-sm data-[state=active]:bg-background">
             Resource ({resourcePacks.length})
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="behavior" className="max-h-[400px] overflow-y-auto scrollbar-thin">
+        <TabsContent value="behavior" className="max-h-[300px] md:max-h-[400px] overflow-y-auto scrollbar-thin">
           <PackList packs={behaviorPacks} type="behavior" />
         </TabsContent>
 
-        <TabsContent value="resource" className="max-h-[400px] overflow-y-auto scrollbar-thin">
+        <TabsContent value="resource" className="max-h-[300px] md:max-h-[400px] overflow-y-auto scrollbar-thin">
           <PackList packs={resourcePacks} type="resource" />
         </TabsContent>
       </Tabs>
 
-      <div className="mt-4 pt-4 border-t border-border/50">
-        <p className="text-xs text-muted-foreground">
-          Use the arrows to change pack priority. Packs at the top are loaded first.
+      <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-border/50">
+        <p className="text-[10px] md:text-xs text-muted-foreground">
+          Use arrows to change priority. Top packs load first.
         </p>
       </div>
     </motion.div>
