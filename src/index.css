@@ -68,6 +68,11 @@
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
+
+  /* Safe area for mobile bottom nav */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
 @layer components {

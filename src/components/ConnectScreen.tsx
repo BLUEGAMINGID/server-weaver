@@ -33,8 +33,8 @@ const ConnectScreen = () => {
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
       {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse-glow" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary/5 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/4 left-1/4 w-64 md:w-96 h-64 md:h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-56 md:w-80 h-56 md:h-80 bg-primary/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
       </div>
 
       {/* Grid pattern overlay */}
@@ -43,7 +43,7 @@ const ConnectScreen = () => {
         style={{
           backgroundImage: `linear-gradient(hsl(var(--foreground)) 1px, transparent 1px),
                            linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)`,
-          backgroundSize: '60px 60px',
+          backgroundSize: '40px 40px',
         }}
       />
 
@@ -51,24 +51,24 @@ const ConnectScreen = () => {
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 w-full max-w-md"
+        className="relative z-10 w-full max-w-sm md:max-w-md"
       >
-        <div className="glass-card p-8 glow-subtle">
+        <div className="glass-card p-6 md:p-8 glow-subtle">
           {/* Header */}
           <motion.div 
-            className="text-center mb-8"
+            className="text-center mb-6 md:mb-8"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 mb-6 glow-primary">
-              <Server className="w-8 h-8 text-primary" />
+            <div className="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-primary/10 border border-primary/20 mb-5 md:mb-6 glow-primary">
+              <Server className="w-7 h-7 md:w-8 md:h-8 text-primary" />
             </div>
-            <h1 className="text-2xl font-semibold text-foreground mb-2">
+            <h1 className="text-xl md:text-2xl font-semibold text-foreground mb-2">
               Connect to Your World
             </h1>
-            <p className="text-muted-foreground text-sm">
-              Enter your Pterodactyl Server UUID to access the management dashboard
+            <p className="text-muted-foreground text-xs md:text-sm">
+              Enter your Pterodactyl Server UUID to access the dashboard
             </p>
           </motion.div>
 
@@ -80,7 +80,7 @@ const ConnectScreen = () => {
             className="space-y-4"
           >
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground/80">Server UUID</label>
+              <label className="text-xs md:text-sm font-medium text-foreground/80">Server UUID</label>
               <Input
                 type="text"
                 placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
@@ -90,13 +90,13 @@ const ConnectScreen = () => {
                   setError('');
                 }}
                 onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
-                className="input-glass h-12 font-mono text-sm placeholder:text-muted-foreground/50"
+                className="input-glass h-11 md:h-12 font-mono text-xs md:text-sm placeholder:text-muted-foreground/50"
               />
               {error && (
                 <motion.p 
                   initial={{ opacity: 0, y: -5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-destructive text-sm"
+                  className="text-destructive text-xs md:text-sm"
                 >
                   {error}
                 </motion.p>
@@ -106,7 +106,7 @@ const ConnectScreen = () => {
             <Button
               onClick={handleConnect}
               disabled={isLoading}
-              className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-medium glow-primary transition-all duration-300"
+              className="w-full h-11 md:h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-medium glow-primary transition-all duration-300 text-sm md:text-base"
             >
               {isLoading ? (
                 <motion.div
@@ -128,10 +128,10 @@ const ConnectScreen = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="mt-6 pt-6 border-t border-border/50"
+            className="mt-5 md:mt-6 pt-5 md:pt-6 border-t border-border/50"
           >
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Sparkles className="w-3 h-3 text-primary" />
+            <div className="flex items-center gap-2 text-[10px] md:text-xs text-muted-foreground">
+              <Sparkles className="w-3 h-3 text-primary shrink-0" />
               <span>Demo: Enter any UUID to explore the dashboard</span>
             </div>
           </motion.div>

@@ -61,23 +61,24 @@ const ConsolePage = () => {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      className="space-y-4 md:space-y-6"
     >
       <div>
-        <h1 className="text-2xl font-semibold mb-1">Console</h1>
-        <p className="text-muted-foreground text-sm">
+        <h1 className="text-xl md:text-2xl font-semibold mb-1">Console</h1>
+        <p className="text-muted-foreground text-xs md:text-sm">
           Monitor server output and send commands
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      {/* Mobile: Stack vertically, show status first */}
+      <div className="flex flex-col-reverse lg:flex-row lg:gap-6 gap-4">
+        <div className="flex-1 lg:flex-[2]">
           <Console 
             messages={consoleMessages} 
             onSendCommand={handleSendCommand} 
           />
         </div>
-        <div>
+        <div className="lg:flex-1">
           {serverStatus && (
             <ServerStatusCard 
               status={serverStatus} 
